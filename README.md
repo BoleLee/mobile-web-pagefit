@@ -81,11 +81,8 @@ dip或dp,（device independent pixels，设备独立像素）与屏幕密度有�
 
 ![CSS像素与设备像素“田”字图解](/images/iphone-resolutions.png)
 
-！[iPhone屏幕尺寸示意图](/images/css-device-pixels.jpg)
+![iPhone屏幕尺寸示意图](/images/css-device-pixels.jpg)
 
-
-[CSS像素与设备像素“田字图解”](https://camo.githubusercontent.com/a407f9dc63ca26a60ade9ed8830713c14f6132d8/687474703a2f2f7777772e773363706c75732e636f6d2f73697465732f64656661756c742f66696c65732f626c6f67732f3230313231322f726574696e612d7765622d332e6a7067)
-[屏幕尺寸示意图](https://www.paintcodeapp.com/news/ultimate-guide-to-iphone-resolutions)
 
 ## 前端实现相关方式 ##
 下面大致列下前端在实现适配上常采用的方式。百分比、em单位的使用就不必说了。
@@ -311,7 +308,9 @@ font-size: px2rem(18px);
 ### flex布局 ###
 flex布局对于屏幕适配也很有帮助，有些地方通过flex布局的实现方式，效果会比较合理。
 关于flex布局，暂时不了解的建议阅读阮一峰老师的教程，分语法和实践两篇，讲得很清晰易懂实用。
+
 [Flex布局教程：语法篇](http://www.ruanyifeng.com/blog/2015/07/flex-grammar.html)
+
 [Flex布局教程：实例篇](http://www.ruanyifeng.com/blog/2015/07/flex-examples.html)
 
 ![Flex布局图解1](/images/flex-1.png)
@@ -337,7 +336,7 @@ flex布局对于屏幕适配也很有帮助，有些地方通过flex布局的实
 本文记录的实现方案```viewport scale=1/dpr```即参考自淘宝的方案，详细介绍可以查看这篇文章：[使用Flexible实现手淘H5页面的终端适配](https://github.com/amfe/article/issues/17)
 
 图解设计与前端协作方案：
-![手机淘宝团队适配协作模式](/images/taobaolflexible.png)
+![手机淘宝团队适配协作模式](/images/taobao-lflexible.png)
 
 方案关键点：
 - 动态改写<meta name="viewport">标签
