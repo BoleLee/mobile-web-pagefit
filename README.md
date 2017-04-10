@@ -336,7 +336,7 @@ flex布局对于屏幕适配也很有帮助，有些地方通过flex布局的实
 本文记录的实现方案```viewport scale=1/dpr```即参考自淘宝的方案，详细介绍可以查看这篇文章：[使用Flexible实现手淘H5页面的终端适配](https://github.com/amfe/article/issues/17)
 
 图解设计与前端协作方案：
-![手机淘宝团队适配协作模式](/images/taobao-lflexible.png)
+![手机淘宝团队适配协作模式](/images/taobao-flexible.png)
 
 方案关键点：
 - 动态改写<meta name="viewport">标签
