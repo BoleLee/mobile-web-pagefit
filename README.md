@@ -1,4 +1,7 @@
 
+本文首次发布于segmentfault: [原文链接](https://segmentfault.com/a/1190000008767416)
+
+
 ## 前言与目录 ##
 移动端Web页面，即常说的H5页面、手机页面、webview页面等。
 
