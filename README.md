@@ -88,18 +88,65 @@ dip或dp,（device independent pixels，设备独立像素）与屏幕密度有�
 
 
 ## 前端实现相关方式 ##
-下面大致列下前端在实现适配上常采用的方式。百分比、em单位的使用就不必说了。
+下面大致列下前端在实现适配上常采用的方式。
 
 ### viewport ###
-#### 方式一：设置理想视口 ####
+#### 设置理想视口 ####
 ```
 <meta name="viewport" content="width=width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
 ```
-设置理想视口，使得DOM宽度(layout viewport)与屏幕宽度(visual viewport)一样大,DOM文档主宽度即为屏幕宽度。1个CSS像素(1px)由多少设备像素显示由具体设备而不同。
+设置理想视口(页面不缩放，禁止用户缩放)，使得DOM宽度(layout viewport)与屏幕宽度(visual viewport)一样大,DOM文档主宽度即为屏幕宽度。1个CSS像素(1px)由多少设备像素显示由具体设备而不同。
 
-#### 方式二：动态设置视口缩放为1/dpr ####
-对于安卓，所有设备缩放设为1,对于IOS，根据dpr不同，设置其缩放为dpr倒数。
-在iPhone6上，缩放为0.5，即CSS像素2px最终显示效果为1px，而在scale=1的设备，CSS像素1px显示效果为1px，那么，为了达到显示效果一致，以px为单位的元素(比如字体大小)，其样式应有适配不同dpr的版本，为了方便写，在动态设置viewport: scale的时候，同时在html根元素上加上```data-dpr=[dpr]```，样式示例：
+#### 动态设置视口缩放为1/dpr ####
+对于安卓，所有设备缩放设为1,对于IOS，根据dpr不同，设置其缩放为dpr倒数。**设置页面缩放可以使得1个CSS像素(1px)由1个设备像素来显示，从而提高显示精度；因此，设置1/dpr的缩放视口，可以画出1px的边框。**
+
+不管页面中有没有设置viewport，若无，则设置，若有，则改写，设置其scale为1/dpr。
+```js
+(function (doc, win) {
+  var docEl = win.document.documentElement;
+  var resizeEvt = 'orientationchange' in window ? 'orientationchange' : 'resize';
+  var metaEl = doc.querySelector('meta[name="viewport"]');
+  var dpr = 0;
+  var scale = 0;
+
+  // 对iOS设备进行dpr的判断，对于Android系列，始终认为其dpr为1
+  if (!dpr && !scale) {
+    var isAndroid = win.navigator.appVersion.match(/android/gi);
+    var isIPhone = win.navigator.appVersion.match(/[iphone|ipad]/gi);
+    var devicePixelRatio = win.devicePixelRatio;
+
+    if(isIPhone) {
+      dpr = devicePixelRatio;
+    } else {
+      drp = 1;
+    }
+    
+    scale = 1 / dpr;
+  }
+
+  /**
+    * ================================================
+    *   设置data-dpr和viewport
+    × ================================================
+    */
+
+  docEl.setAttribute('data-dpr', dpr);
+  // 动态改写meta:viewport标签
+  if (!metaEl) {
+    metaEl = doc.createElement('meta');
+    metaEl.setAttribute('name', 'viewport');
+    metaEl.setAttribute('content', 'width=device-width, initial-scale=' + scale + ', maximum-scale=' + scale + ', minimum-scale=' + scale + ', user-scalable=no');
+    document.documentElement.firstElementChild.appendChild(metaEl);
+  } else {
+    metaEl.setAttribute('content', 'width=device-width, initial-scale=' + scale + ', maximum-scale=' + scale + ', minimum-scale=' + scale + ', user-scalable=no');
+  }
+})(document, window);
+
+```
+
+#### px单位的适配 ####
+设置动态缩放视口后，在iPhone6上，缩放为0.5，即CSS像素2px最终显示效果为1px，而在scale=1的设备，CSS像素1px显示效果为1px，那么，为了达到显示效果一致，以px为单位的元素(比如字体大小)，其样式应有适配不同dpr的版本，因此，在动态设置```viewport: scale```的时候，同时在html根元素上加上```data-dpr=[dpr]```，**但是这种方式还是不够，如果dpr为2，3之外的其他数值，px就没办法适配到。因此我会选择都用rem为单位进行适配。**
+样式示例：
 ```css
 .p {
     font-size: 14px;
@@ -143,74 +190,11 @@ dip或dp,（device independent pixels，设备独立像素）与屏幕密度有�
 @include font-dpr(14px);
 @include px-dpr(width, 40px); @include px-dpr(height, 40px);
 ```
-若无指定```viewport scale```，则将IOS设备根据其1/dpr缩放，同时在根元素上加上```data-dpr=[dpr]```: 
-```js
-(function (doc, win) {
-  var doc = win.document;
-  var docEl = doc.documentElement;
-  var resizeEvt = 'orientationchange' in window ? 'orientationchange' : 'resize';
-  var metaEl = doc.querySelector('meta[name="viewport"]');
-  var metaCtt = metaEl ? metaEl.content : '';
-  var dpr = 0;
-  var scale = 0;
-  var matchScale = metaCtt.match(/initial\-scale=([\d\.]+)/);
-  var matchWidth = metaCtt.match(/width=([^,\s]+)/);
-
-  /**
-    * ================================================
-    *   设置data-dpr和viewport
-    × ================================================
-    */
-  if (matchScale) {
-    console.warn('将根据已有的meta标签来设置缩放比例');
-    scale = parseFloat(matchScale[1]);
-    dpr = parseInt(1 / scale);
-  }
-
-  // 对iOS设备进行dpr的判断，对于Android系列，始终认为其dpr为1
-  if (!dpr && !scale) {
-    var isAndroid = win.navigator.appVersion.match(/android/gi);
-    var isIPhone = win.navigator.appVersion.match(/[iphone|ipad]/gi);
-    var devicePixelRatio = win.devicePixelRatio;
-    if (isIPhone) {
-        // iOS下，对于2和3的屏，用2倍的方案，其余的用1倍方案
-        if (devicePixelRatio >= 3 && (!dpr || dpr >= 3)) {                
-            dpr = 3;
-        } else if (devicePixelRatio >= 2 && (!dpr || dpr >= 2)){
-            dpr = 2;
-        } else {
-            dpr = 1;
-        }
-    } else {
-        // 其他设备下，仍旧使用1倍的方案
-        dpr = 1;
-    }
-    scale = 1 / dpr;
-  }
-
-  docEl.setAttribute('data-dpr', dpr);
-  // 动态改写meta:viewport标签
-  if (!matchScale) { 
-    var metaEl = doc.createElement('meta');
-    metaEl.setAttribute('name', 'viewport');
-    metaEl.setAttribute('content', 'initial-scale=' + scale + ', maximum-scale=' + scale + ', minimum-scale=' + scale + ', user-scalable=no');
-    if (docEl.firstElementChild) {
-      document.documentElement.firstElementChild.appendChild(metaEl);
-    } else {
-      var wrap = doc.createElement('div');
-      wrap.appendChild(metaEl);
-      documen.write(wrap.innerHTML);
-    }
-  }
-
-})(document, window);
-
-```
 
 
 #### 设置缩放视口与设置理想视口有什么不同 ####
 问题：viewport设为理想视口(scale=1)，基本已经满足适配，为什么要动态设置viewport缩放?
-推测原因：iPhone6为例，dpr为2，缩放设为0.5，则DOM宽度为750，缩放后显示刚好为屏幕宽度375，而总的CSS像素其实是750，与设备像素一致，这样1px的CSS像素，占用的物理像素也是1；而viewport设置缩放为1的理想视口情况下，DOM宽度为375，显示也刚好是屏幕宽度，然而1px的CSS像素，占用的物理像素是2。这样说来，这样设置可以实现1px的线条在二倍屏的显示。因为：** CSS像素与设备像素的关系依赖于屏幕缩放。 **
+原因：iPhone6为例，dpr为2，缩放设为0.5，则DOM宽度为750，缩放后显示刚好为屏幕宽度375，而总的CSS像素其实是750，与设备像素一致，这样1px的CSS像素，占用的物理像素也是1；而viewport设置缩放为1的理想视口情况下，DOM宽度为375，显示也刚好是屏幕宽度，然而1px的CSS像素，占用的物理像素是2。这样说来，这样设置可以实现1px的线条在二倍屏的显示。因为：** CSS像素与设备像素的关系依赖于屏幕缩放。 **
 验证：设备：iPhone6, 
 在scale=0.5时，1px边框显示效果;
 在scale=1.0时，1px边框显示效果;
@@ -246,6 +230,7 @@ dip或dp,（device independent pixels，设备独立像素）与屏幕密度有�
 
 > 其中，```baseWidth, baseFontSize```是选为基准的设备宽度及其根元素大小，```width, fontSize```为所求设备的宽度及其根元素大小
 
+#### 动态设置根元素fontSize ####
 ```js
 /**
   * 以下这段代码是用于根据移动端设备的屏幕分辨率计算出合适的根元素的大小
@@ -254,25 +239,24 @@ dip或dp,（device independent pixels，设备独立像素）与屏幕密度有�
   * scale 为meta viewport中的缩放大小
   */
 (function (doc, win) {
-  var docEl = doc.documentElement;
+  var docEl = win.document.documentElement;
   var resizeEvt = 'orientationchange' in window ? 'orientationchange' : 'resize';
   /**
     * ================================================
     *   设置根元素font-size
-    * 当设备宽度为375(iPhone6)时，根元素font-size=16px; 依次增大；
-    * 当为设备宽度大于768(iPad)之后，font-size不再继续增大
+    * 当设备宽度为375(iPhone6)时，根元素font-size=16px; 
     × ================================================
     */
-    var refreshRem = function () {
-    var clientWidth = docEl.clientWidth; // var clientWidth = docEl.getBoundingClientRect().width;
+  var refreshRem = function () {
+    var clientWidth = win.innerWidth
+                      || doc.documentElement.clientWidth
+                      || doc.body.clientWidth;
+
+    console.log(clientWidth)
     if (!clientWidth) return;
     var fz;
-    var maxWidth = 768;
     var width = clientWidth;
-    if(clientWidth/dpr > maxWidth) {
-      width = maxWidth*dpr;
-    }
-    fz = 16 * (width / 375);
+    fz = 16 * width / 375;
     docEl.style.fontSize = fz + 'px';
   };
 
@@ -283,10 +267,18 @@ dip或dp,（device independent pixels，设备独立像素）与屏幕密度有�
 
 })(document, window);
 ```
-对于需要使用rem来适配不同·屏幕的元素，使用rem来作为CSS单位，为了方便，可以借助sass写一个函数计算px转化为rem, 写样式时不必一直手动计算。sass函数的使用若不熟悉可看下[这篇文章：如何编写自定义Sass 函数](https://www.w3cplus.com/preprocessor/custom-sass-functions.html), 也可以使用sass的mixin来写，个人觉得用函数写更适合。
+
+#### rem计算(px2rem) ####
+对于需要使用rem来适配不同屏幕的元素，使用rem来作为CSS单位，为了方便，可以借助sass写一个函数计算px转化为rem, 写样式时不必一直手动计算。sass函数的使用若不熟悉可看下[这篇文章：如何编写自定义Sass 函数](https://www.w3cplus.com/preprocessor/custom-sass-functions.html), 也可以使用sass的mixin来写，个人觉得用函数写更适合。
 
 ```scss
-@function px2rem($px, $base-font-size: 16px) {
+/* 
+ * 此处 $base-font-size 具体数值根据设计图尺寸而定
+ * flexible中设置的标准是【fontSize=16px, when 屏幕宽度=375】，因此，按此标准进行计算，
+ * 若设计图为iPhone6(375*667)的二倍稿，则$base-font-size=32px
+ *
+ */ 
+@function px2rem($px, $base-font-size: 32px) {
   @if (unitless($px)) {
     @warn "Assuming #{$px} to be in pixels, attempting to convert it into pixels for you";
     @return px2rem($px + 0px); // That may fail.
@@ -295,18 +287,20 @@ dip或dp,（device independent pixels，设备独立像素）与屏幕密度有�
   }
   @return ($px / $base-font-size) * 1rem;
 }
+
 // 使用，eg:
 font-size: px2rem(18px);
 
 ```
 
-** 问题思考 **
+#### 问题思考 ####
 我之前一直在想一个问题，选取哪个设备来做基准、屏幕宽度等分为多少比较合适，设计图给多大宽度的版本？被选取作为基准的设备，应当就是前端需要设计提供的设计图版本，这样可以避免一些尺寸上的纠缠，而等分为多少等分，除了考虑方便设计，是否需要考虑其他问题？对于根元素font-size没有手动设置的情况，1rem究竟等于多少？
 
 > 了解到的一些事实：
 >- 某些Android设备会丢掉 rem 小数部分（具体是哪些设备，搜到的文章中没有说），那么1rem对应的px少些，在这些安卓设备上显示误差就会较小，当然如果不存在会丢掉小数这个问题，这一说也就不必考虑了。
 >- 未设置font-size情况下，1rem的大小具体看浏览器的实现，默认的根元素大小是font-size=16px
 >- 目前一般会选取iPhone6作为基准，设计图便要iPhone6的二倍图
+>- ** 当动态缩放视口为1/dpr, 计算所得的根元素fontSize也会跟着缩放，即若理想视口(scale=1), iPhone6根元素fontSize=16px; 若scale=0.5, iPhone6根元素fontSize=32px; 因此设置视口缩放应放于设置根元素fontSize之前。 **
 
 ### flex布局 ###
 flex布局对于屏幕适配也很有帮助，有些地方通过flex布局的实现方式，效果会比较合理。
@@ -351,7 +345,7 @@ flex布局对于屏幕适配也很有帮助，有些地方通过flex布局的实
 各种元素(文本、图片)处理方案参考：
 [图：怎样让你的网站适应视网膜分辨率](https://camo.githubusercontent.com/55960bfa1419eabdee47efdd2f863a9ab50b3203/687474703a2f2f7777772e773363706c75732e636f6d2f73697465732f64656661756c742f66696c65732f626c6f67732f3230313231322f726574696e612d7765622d31302e6a7067)
 
-### px转rem的计算 ###
+### px转rem的mixin ###
 
 ```scss
 // 使用sass的混合宏
@@ -384,13 +378,16 @@ flex布局对于屏幕适配也很有帮助，有些地方通过flex布局的实
 
 
 ## 小结 ##
-- 对于多倍屏，通过rem/px + viewport: scale=1/dpr来达到适合的显示；
-- ! css单位综合使用：适配元素rem为单位，正文字体及边距宜用px为单位；
+- 适配不同屏幕宽度以及不同dpr，通过动态设置viewport(scale=1/dpr) + 根元素fontSize + rem, 辅助使用vw/vh等来达到适合的显示；
+- 若无需适配可显示1px线条，也可以不动态设置scale，只使用动态设置根元素fontSize + rem + 理想视口；
+- 当视口缩放，计算所得的根元素fontSize也会跟着缩放，即若理想视口(scale=1), iPhone6根元素fontSize=16px; 若scale=0.5, iPhone6根元素fontSize=32px; 因此不必担心rem的计算；
+- !!css单位：以前我认为这样比较好：适配元素rem为单位，正文字体及边距宜用px为单位；现在认为**全部用rem即可，包括字体大小，不用px**；
 - px为单位的元素，需根据dpr有不同的大小，如大小12px, dpr=2则采用24px, 使用sass mixin简化写法；
 - 配合scss函数，简化px2rem转换，且易于维护(若需修改$base-font-size, 无需手动重新计算所有rem单位)；
-- 使用iPhone6(375pt, 750px)二倍设计图:宽度750px；
-- 切图使用三倍精度图，以适应三倍屏
-- 设置```viewport, data-dpr, font-size```的完整js代码见此项目文件```base.js```, 相关的CSS预处理片段见```mixins.scss```
+- px2rem函数的$base-font-size只跟根元素fontSize的基准（此文中是【fontSize=16px when 375】）以及设计图的大小有关，按此基准，若设计图为iPhone6二倍稿，则$base-font-size=32px，参数传值直接为设计图标注尺寸；
+- 使用iPhone6(375pt)二倍设计图:宽度750px；
+- 切图使用三倍精度图，以适应三倍屏（这个目前我还没有实际应用过）
+- 设置```viewport, data-dpr, font-size```的完整js代码见此项目文件```flexible.js```, 相关的CSS预处理片段见```_mixins.scss```
 
 
 ## 相关链接 ##
